@@ -1,3 +1,131 @@
+import axios from 'axios';
+import Notiflix from 'notiflix';
+import SimpleLightbox from 'simplelightbox';
+import 'simplelightbox/dist/simple-lightbox.min.css';
+
+const formInput = document.querySelector('#search-form');
+const markupContainer = document.querySelector('.gallery');
+const loadMoreButton = document.querySelector('.load-more');
+
+const url = 'https://pixabay.com/api/?';
+const KEY_ACCESS = '32696912-4a05c8f7f735a3dd0164dcd85';
+
+let lightbox = new SimpleLightbox('.photo-card a', {
+  captionsData: 'alt',
+  captionDelay: 250,
+});
+
+let currentPage = 1;
+
+formInput.addEventListener('submit', onSubmit);
+loadMoreButton.addEventListener('click', onLoadMoreButton);
+
+async function onSubmit(event) {
+  event.preventDefault();
+
+  loadMoreButton.setAttribute('hidden', 'true');
+
+  clearPage();
+  currentPage = 1;
+  const feedback = await fetchPhotos();
+
+  if (feedback.hits.length === 0) {
+    Notiflix.Notify.failure(
+      'Sorry, there are no images matching your search query. Please try again.'
+    );
+    return;
+  } else {
+    Notiflix.Notify.info(`Hooray! We found ${feedback.totalHits} images.`);
+  }
+  console.log(feedback);
+
+  createMarkup(feedback.hits);
+  lightbox.refresh();
+
+  if (feedback.totalHits === feedback.hits.length) {
+    loadMoreButton.setAttribute('hidden');
+    Notiflix.Notify.info(
+      "We're sorry, but you've reached the end of search results."
+    );
+  } else {
+    loadMoreButton.removeAttribute('hidden');
+  }
+}
+
+async function fetchPhotos() {
+  const response = await axios(url, {
+    params: {
+      key: KEY_ACCESS,
+      image_type: 'photo',
+      orientation: 'horizontal',
+      safesearch: true,
+      per_page: 40,
+      page: currentPage,
+      q: formInput.searchQuery.value,
+    },
+  });
+  const result = await response.data;
+  return result;
+}
+
+function clearPage() {
+  markupContainer.innerHTML = '';
+}
+
+function createMarkup(object) {
+  const markup = object
+    .map(
+      ({
+        webformatURL,
+        largeImageURL,
+        tags,
+        likes,
+        views,
+        comments,
+        downloads,
+      }) => {
+        return `<div class="photo-card">
+                    <a href="${largeImageURL}">
+                        <img src="${webformatURL}" alt="${tags}" loading="lazy" width="250" />
+                    </a>
+                    <div class="info">
+                        <p class="info-item">
+                        <b>Likes: ${likes}</b>
+                        </p>
+                        <p class="info-item">
+                        <b>Views: ${views}</b>
+                        </p>
+                        <p class="info-item">
+                        <b>Comments: ${comments}</b>
+                        </p>
+                        <p class="info-item">
+                        <b>Downloads: ${downloads}</b>
+                        </p>
+                    </div>
+                </div>`;
+      }
+    )
+    .join('');
+
+  markupContainer.insertAdjacentHTML('beforeend', markup);
+}
+
+async function onLoadMoreButton() {
+  currentPage += 1;
+  const feedback = await fetchPhotos();
+  createMarkup(feedback.hits);
+  lightbox.refresh();
+
+  const { height: cardHeight } = document
+    .querySelector('.gallery')
+    .firstElementChild.getBoundingClientRect();
+
+  window.scrollBy({
+    top: cardHeight * 2,
+    behavior: 'smooth',
+  });
+}
+
 // Критерії приймання
 // Створено репозиторій goit-js-hw-11.
 // Домашня робота містить два посилання: на вихідні файли і робочу сторінку на GitHub Pages.
