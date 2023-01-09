@@ -68,19 +68,7 @@ async function onSubmit(event) {
     behavior: 'smooth',
   });
 
-  // У відповіді бекенд повертає властивість totalHits - загальна кількість зображень,
-  // які відповідають критерію пошуку (для безкоштовного акаунту).
-  // Якщо користувач дійшов до кінця колекції, ховай кнопку і виводь повідомлення з текстом
-  // "We're sorry, but you've reached the end of search results.".
-  if (totalHits === feedback.totalHits) {
-    loadMoreButton.style.display = 'none';
-    Notiflix.Notify.info(
-      "We're sorry, but you've reached the end of search results."
-    );
-    // Після першого запиту кнопка з'являється в інтерфейсі під галереєю.
-  } else {
-    loadMoreButton.style.display = 'block';
-  }
+  checkLoadMoreButton(totalHits, feedback);
 }
 
 function clearPage() {
@@ -100,15 +88,7 @@ async function onLoadMoreButton() {
 
   totalHits += feedback.hits.length;
 
-  if (totalHits === feedback.totalHits) {
-    loadMoreButton.style.display = 'none';
-    Notiflix.Notify.info(
-      "We're sorry, but you've reached the end of search results."
-    );
-    // Після першого запиту кнопка з'являється в інтерфейсі під галереєю.
-  } else {
-    loadMoreButton.style.display = 'block';
-  }
+  checkLoadMoreButton(totalHits, feedback);
 
   // Зробити плавне прокручування сторінки після запиту і відтворення кожної наступної групи зображень.
   const { height: cardHeight } = document
@@ -119,6 +99,22 @@ async function onLoadMoreButton() {
     top: cardHeight * 2,
     behavior: 'smooth',
   });
+}
+
+function checkLoadMoreButton(iterator, value) {
+  // У відповіді бекенд повертає властивість totalHits - загальна кількість зображень,
+  // які відповідають критерію пошуку (для безкоштовного акаунту).
+  // Якщо користувач дійшов до кінця колекції, ховай кнопку і виводь повідомлення з текстом
+  // "We're sorry, but you've reached the end of search results.".
+  if (`${iterator}` === `${value.totalHits}`) {
+    loadMoreButton.style.display = 'none';
+    Notiflix.Notify.info(
+      "We're sorry, but you've reached the end of search results."
+    );
+    // Після першого запиту кнопка з'являється в інтерфейсі під галереєю.
+  } else {
+    loadMoreButton.style.display = 'block';
+  }
 }
 
 // Критерії приймання
