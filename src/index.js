@@ -6,6 +6,7 @@ import 'simplelightbox/dist/simple-lightbox.min.css';
 const formInput = document.querySelector('#search-form');
 const markupContainer = document.querySelector('.gallery');
 const loadMoreButton = document.querySelector('.load-more');
+loadMoreButton.style.display = 'none';
 
 const url = 'https://pixabay.com/api/?';
 const KEY_ACCESS = '32696912-4a05c8f7f735a3dd0164dcd85';
@@ -22,8 +23,6 @@ loadMoreButton.addEventListener('click', onLoadMoreButton);
 
 async function onSubmit(event) {
   event.preventDefault();
-
-  loadMoreButton.setAttribute('hidden', 'true');
 
   clearPage();
   currentPage = 1;
@@ -43,12 +42,12 @@ async function onSubmit(event) {
   lightbox.refresh();
 
   if (feedback.totalHits === feedback.hits.length) {
-    loadMoreButton.setAttribute('hidden');
+    loadMoreButton.style.display = 'none';
     Notiflix.Notify.info(
       "We're sorry, but you've reached the end of search results."
     );
   } else {
-    loadMoreButton.removeAttribute('hidden');
+    loadMoreButton.style.display = 'block';
   }
 }
 
@@ -86,7 +85,7 @@ function createMarkup(object) {
       }) => {
         return `<div class="photo-card">
                     <a href="${largeImageURL}">
-                        <img src="${webformatURL}" alt="${tags}" loading="lazy" width="250" />
+                        <img src="${webformatURL}" alt="${tags}" loading="lazy" width="250" height="250" />
                     </a>
                     <div class="info">
                         <p class="info-item">
