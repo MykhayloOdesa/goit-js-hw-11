@@ -1,16 +1,14 @@
-import axios from 'axios';
 import Notiflix from 'notiflix';
 import SimpleLightbox from 'simplelightbox';
 import 'simplelightbox/dist/simple-lightbox.min.css';
+import { createMarkup } from './js/createMarkup';
+import { fetchPhotos } from './js/fetchPhotos';
 
 const formInput = document.querySelector('#search-form');
 const markupContainer = document.querySelector('.gallery');
 const loadMoreButton = document.querySelector('.load-more');
 // В початковому стані кнопка повинна бути прихована.
 loadMoreButton.style.display = 'none';
-
-const url = 'https://pixabay.com/api/?';
-const KEY_ACCESS = '32696912-4a05c8f7f735a3dd0164dcd85';
 
 // Додати відображення великої версії зображення з бібліотекою SimpleLightbox для повноцінної галереї.
 let lightbox = new SimpleLightbox('.photo-card a', {
@@ -20,6 +18,7 @@ let lightbox = new SimpleLightbox('.photo-card a', {
 
 // Початкове значення параметра page повинно бути 1.
 let currentPage = 1;
+let totalHits = 0;
 
 formInput.addEventListener('submit', onSubmit);
 loadMoreButton.addEventListener('click', onLoadMoreButton);
@@ -32,9 +31,11 @@ async function onSubmit(event) {
   // У разі пошуку за новим ключовим словом, значення page потрібно повернути до початкового,
   // оскільки буде пагінація по новій колекції зображень.
   currentPage = 1;
-  const feedback = await fetchPhotos();
+  const feedback = await fetchPhotos(formInput, currentPage);
 
-  if (feedback.hits.length === 0) {
+  totalHits = feedback.hits.length;
+
+  if (!totalHits) {
     // Якщо бекенд повертає порожній масив, значить нічого підходящого не було знайдено.
     // У такому разі показуй повідомлення з текстом "Sorry, there are no images matching your search query. Please try again.".
     // Для повідомлень використовуй бібліотеку notiflix.
@@ -48,17 +49,29 @@ async function onSubmit(event) {
   } else {
     Notiflix.Notify.info(`Hooray! We found ${feedback.totalHits} images.`);
   }
+
   console.log(feedback);
 
-  createMarkup(feedback.hits);
+  const markup = createMarkup(feedback.hits);
+  markupContainer.insertAdjacentHTML('beforeend', markup);
   // Бібліотека містить метод refresh(), який обов'язково потрібно викликати щоразу після додавання нової групи карток зображень.
   lightbox.refresh();
+
+  // Зробити плавне прокручування сторінки після запиту і відтворення кожної наступної групи зображень.
+  const { height: cardHeight } = document
+    .querySelector('.gallery')
+    .firstElementChild.getBoundingClientRect();
+
+  window.scrollBy({
+    top: cardHeight * 2,
+    behavior: 'smooth',
+  });
 
   // У відповіді бекенд повертає властивість totalHits - загальна кількість зображень,
   // які відповідають критерію пошуку (для безкоштовного акаунту).
   // Якщо користувач дійшов до кінця колекції, ховай кнопку і виводь повідомлення з текстом
   // "We're sorry, but you've reached the end of search results.".
-  if (feedback.totalHits === feedback.hits.length) {
+  if (totalHits === feedback.totalHits) {
     loadMoreButton.style.display = 'none';
     Notiflix.Notify.info(
       "We're sorry, but you've reached the end of search results."
@@ -69,64 +82,8 @@ async function onSubmit(event) {
   }
 }
 
-async function fetchPhotos() {
-  const response = await axios(url, {
-    params: {
-      key: KEY_ACCESS,
-      image_type: 'photo',
-      orientation: 'horizontal',
-      safesearch: true,
-      // Зроби так, щоб в кожній відповіді приходило 40 об'єктів (за замовчуванням 20).
-      per_page: 40,
-      page: currentPage,
-      q: formInput.searchQuery.value,
-    },
-  });
-  const result = await response.data;
-  return result;
-}
-
 function clearPage() {
   markupContainer.innerHTML = '';
-}
-
-function createMarkup(object) {
-  const markup = object
-    .map(
-      ({
-        webformatURL,
-        largeImageURL,
-        tags,
-        likes,
-        views,
-        comments,
-        downloads,
-      }) => {
-        // У розмітці необхідно буде обгорнути кожну картку зображення у посилання, як зазначено в документації.
-        return `<div class="photo-card">
-                    <a href="${largeImageURL}">
-                        <img src="${webformatURL}" alt="${tags}" loading="lazy" width="250" height="250" />
-                    </a>
-                    <div class="info">
-                        <p class="info-item">
-                        <b>Likes: ${likes}</b>
-                        </p>
-                        <p class="info-item">
-                        <b>Views: ${views}</b>
-                        </p>
-                        <p class="info-item">
-                        <b>Comments: ${comments}</b>
-                        </p>
-                        <p class="info-item">
-                        <b>Downloads: ${downloads}</b>
-                        </p>
-                    </div>
-                </div>`;
-      }
-    )
-    .join('');
-
-  markupContainer.insertAdjacentHTML('beforeend', markup);
 }
 
 async function onLoadMoreButton() {
@@ -134,10 +91,23 @@ async function onLoadMoreButton() {
   // HTML документ вже містить розмітку кнопки, по кліку на яку,
   // необхідно виконувати запит за наступною групою зображень і додавати розмітку до вже існуючих елементів галереї.
   currentPage += 1;
-  const feedback = await fetchPhotos();
-  createMarkup(feedback.hits);
+  const feedback = await fetchPhotos(formInput, currentPage);
+  const markup = createMarkup(feedback.hits);
+  markupContainer.insertAdjacentHTML('beforeend', markup);
   // Бібліотека містить метод refresh(), який обов'язково потрібно викликати щоразу після додавання нової групи карток зображень.
   lightbox.refresh();
+
+  totalHits += feedback.hits.length;
+
+  if (totalHits === feedback.totalHits) {
+    loadMoreButton.style.display = 'none';
+    Notiflix.Notify.info(
+      "We're sorry, but you've reached the end of search results."
+    );
+    // Після першого запиту кнопка з'являється в інтерфейсі під галереєю.
+  } else {
+    loadMoreButton.style.display = 'block';
+  }
 
   // Зробити плавне прокручування сторінки після запиту і відтворення кожної наступної групи зображень.
   const { height: cardHeight } = document
