@@ -6,16 +6,19 @@ import 'simplelightbox/dist/simple-lightbox.min.css';
 const formInput = document.querySelector('#search-form');
 const markupContainer = document.querySelector('.gallery');
 const loadMoreButton = document.querySelector('.load-more');
+// В початковому стані кнопка повинна бути прихована.
 loadMoreButton.style.display = 'none';
 
 const url = 'https://pixabay.com/api/?';
 const KEY_ACCESS = '32696912-4a05c8f7f735a3dd0164dcd85';
 
+// Додати відображення великої версії зображення з бібліотекою SimpleLightbox для повноцінної галереї.
 let lightbox = new SimpleLightbox('.photo-card a', {
   captionsData: 'alt',
   captionDelay: 250,
 });
 
+// Початкове значення параметра page повинно бути 1.
 let currentPage = 1;
 
 formInput.addEventListener('submit', onSubmit);
@@ -24,28 +27,43 @@ loadMoreButton.addEventListener('click', onLoadMoreButton);
 async function onSubmit(event) {
   event.preventDefault();
 
+  // Під час пошуку за новим ключовим словом необхідно повністю очищати вміст галереї, щоб не змішувати результати.
   clearPage();
+  // У разі пошуку за новим ключовим словом, значення page потрібно повернути до початкового,
+  // оскільки буде пагінація по новій колекції зображень.
   currentPage = 1;
   const feedback = await fetchPhotos();
 
   if (feedback.hits.length === 0) {
+    // Якщо бекенд повертає порожній масив, значить нічого підходящого не було знайдено.
+    // У такому разі показуй повідомлення з текстом "Sorry, there are no images matching your search query. Please try again.".
+    // Для повідомлень використовуй бібліотеку notiflix.
     Notiflix.Notify.failure(
       'Sorry, there are no images matching your search query. Please try again.'
     );
     return;
+    // Після першого запиту з кожним новим пошуком отримувати повідомлення,
+    // в якому буде написано, скільки всього знайшли зображень (властивість totalHits).
+    // Текст повідомлення - "Hooray! We found totalHits images."
   } else {
     Notiflix.Notify.info(`Hooray! We found ${feedback.totalHits} images.`);
   }
   console.log(feedback);
 
   createMarkup(feedback.hits);
+  // Бібліотека містить метод refresh(), який обов'язково потрібно викликати щоразу після додавання нової групи карток зображень.
   lightbox.refresh();
 
+  // У відповіді бекенд повертає властивість totalHits - загальна кількість зображень,
+  // які відповідають критерію пошуку (для безкоштовного акаунту).
+  // Якщо користувач дійшов до кінця колекції, ховай кнопку і виводь повідомлення з текстом
+  // "We're sorry, but you've reached the end of search results.".
   if (feedback.totalHits === feedback.hits.length) {
     loadMoreButton.style.display = 'none';
     Notiflix.Notify.info(
       "We're sorry, but you've reached the end of search results."
     );
+    // Після першого запиту кнопка з'являється в інтерфейсі під галереєю.
   } else {
     loadMoreButton.style.display = 'block';
   }
@@ -58,6 +76,7 @@ async function fetchPhotos() {
       image_type: 'photo',
       orientation: 'horizontal',
       safesearch: true,
+      // Зроби так, щоб в кожній відповіді приходило 40 об'єктів (за замовчуванням 20).
       per_page: 40,
       page: currentPage,
       q: formInput.searchQuery.value,
@@ -83,6 +102,7 @@ function createMarkup(object) {
         comments,
         downloads,
       }) => {
+        // У розмітці необхідно буде обгорнути кожну картку зображення у посилання, як зазначено в документації.
         return `<div class="photo-card">
                     <a href="${largeImageURL}">
                         <img src="${webformatURL}" alt="${tags}" loading="lazy" width="250" height="250" />
@@ -110,11 +130,16 @@ function createMarkup(object) {
 }
 
 async function onLoadMoreButton() {
+  // З кожним наступним запитом, його необхідно збільшити на 1.
+  // HTML документ вже містить розмітку кнопки, по кліку на яку,
+  // необхідно виконувати запит за наступною групою зображень і додавати розмітку до вже існуючих елементів галереї.
   currentPage += 1;
   const feedback = await fetchPhotos();
   createMarkup(feedback.hits);
+  // Бібліотека містить метод refresh(), який обов'язково потрібно викликати щоразу після додавання нової групи карток зображень.
   lightbox.refresh();
 
+  // Зробити плавне прокручування сторінки після запиту і відтворення кожної наступної групи зображень.
   const { height: cardHeight } = document
     .querySelector('.gallery')
     .firstElementChild.getBoundingClientRect();
@@ -141,7 +166,7 @@ async function onLoadMoreButton() {
 // Подивись демо - відео роботи застосунку.
 
 // Форма пошуку
-// Форма спочатку міститья в HTML документі. Користувач буде вводити рядок для пошуку у текстове поле,
+// Форма спочатку міститься в HTML-документі. Користувач буде вводити рядок для пошуку у текстове поле,
 // а по сабміту форми необхідно виконувати HTTP-запит.
 
 // <form class="search-form" id="search-form">
@@ -225,6 +250,7 @@ async function onLoadMoreButton() {
 // В початковому стані кнопка повинна бути прихована.
 // Після першого запиту кнопка з'являється в інтерфейсі під галереєю.
 // При повторному сабміті форми кнопка спочатку ховається, а після запиту знову відображається.
+
 // У відповіді бекенд повертає властивість totalHits - загальна кількість зображень,
 // які відповідають критерію пошуку (для безкоштовного акаунту).
 // Якщо користувач дійшов до кінця колекції, ховай кнопку і виводь повідомлення з текстом
@@ -244,8 +270,8 @@ async function onLoadMoreButton() {
 
 // У розмітці необхідно буде обгорнути кожну картку зображення у посилання, як зазначено в документації.
 // Бібліотека містить метод refresh(), який обов'язково потрібно викликати щоразу після додавання нової групи карток зображень.
-// Для того щоб підключити CSS код бібліотеки в проект, необхідно додати ще один імпорт, крім того, що описаний в документації.
 
+// Для того щоб підключити CSS код бібліотеки в проект, необхідно додати ще один імпорт, крім того, що описаний в документації.
 // // Описаний в документації
 // import SimpleLightbox from "simplelightbox";
 // // Додатковий імпорт стилів
