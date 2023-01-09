@@ -42,6 +42,7 @@ async function onSubmit(event) {
     Notiflix.Notify.failure(
       'Sorry, there are no images matching your search query. Please try again.'
     );
+    loadMoreButton.style.display = 'none';
     return;
     // Після першого запиту з кожним новим пошуком отримувати повідомлення,
     // в якому буде написано, скільки всього знайшли зображень (властивість totalHits).
