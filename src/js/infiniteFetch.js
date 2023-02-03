@@ -1,8 +1,8 @@
 import axios from 'axios';
 import Notiflix from 'notiflix';
 
-const URL = 'https://pixabay.com/api/';
-const KEY_ACCESS = '32696912-4a05c8f7f735a3dd0164dcd85';
+const API_KEY = '32696912-4a05c8f7f735a3dd0164dcd85';
+const URL = `https://pixabay.com/api/`;
 export const perPage = 40;
 
 export class ImagesApiService {
@@ -13,7 +13,7 @@ export class ImagesApiService {
 
   async fetchImages() {
     const axiosParams = {
-      key: KEY_ACCESS,
+      key: API_KEY,
       q: this.searchQuery,
       image_type: 'photo',
       orientation: 'horizontal',
@@ -29,7 +29,7 @@ export class ImagesApiService {
       this.incrementPage();
       return { hits: response.data.hits, totalHits: response.data.totalHits };
     } catch (error) {
-      return Notiflix.failure(
+      return Notiflix.Notify.failure(
         'Sorry, there are no images matching your search query. Please try again.'
       );
     }
@@ -46,6 +46,7 @@ export class ImagesApiService {
   get query() {
     return this.searchQuery;
   }
+
   set query(newQuery) {
     this.searchQuery = newQuery;
   }

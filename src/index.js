@@ -3,11 +3,12 @@ import SimpleLightbox from 'simplelightbox';
 import 'simplelightbox/dist/simple-lightbox.min.css';
 import { createMarkup } from './js/createMarkup';
 import { fetchPhotos } from './js/fetchPhotos';
-import { ImagesApiService } from './js/infiniteFetch';
+import { ImagesApiService, perPage } from './js/infiniteFetch';
 
 const formInput = document.querySelector('#search-form');
 const markupContainer = document.querySelector('.gallery');
 const loadMoreButton = document.querySelector('.load-more');
+const sentinel = document.querySelector('#sentinel');
 // В початковому стані кнопка повинна бути прихована.
 loadMoreButton.style.display = 'none';
 
@@ -19,7 +20,6 @@ let lightbox = new SimpleLightbox('.photo-card a', {
 
 // Початкове значення параметра page повинно бути 1.
 let currentPage = 1;
-let totalHits = 0;
 
 formInput.lastElementChild.addEventListener('click', () => {
   formInput.lastElementChild.classList.toggle('is-active');
@@ -30,6 +30,118 @@ if (loadMoreButton) {
   formInput.addEventListener('submit', onSubmit);
   loadMoreButton.addEventListener('click', onLoadMoreButton);
 } else {
+  formInput.addEventListener('submit', onSearch);
+
+  const imagesService = new ImagesApiService();
+
+  const optionsObserver = {
+    root: null,
+    rootMargin: '100px',
+    threshold: 1.0,
+  };
+
+  const observer = new IntersectionObserver(handleIntersect, optionsObserver);
+  const observerLastElem = new IntersectionObserver(
+    handleIntersectLastElem,
+    optionsObserver
+  );
+
+  observer.observe(sentinel);
+
+  function onSearch(event) {
+    event.preventDefault();
+
+    imagesService.query = event.currentTarget.elements.searchQuery.value;
+
+    if (!imagesService.query) {
+      return Notiflix.Notify.failure(
+        'Sorry, there are no images matching your search query. Please try again.'
+      );
+    }
+
+    imagesService.resetPage();
+
+    imagesService.fetchImages().then(handleSearchResult);
+  }
+
+  function handleSearchResult(data) {
+    if (!data) {
+      return;
+    }
+
+    const { hits, totalHits } = data;
+
+    clearImagesContainer();
+
+    if (hits.length === 0) {
+      return Notiflix.Notify.failure(
+        'Sorry, there are no images matching your search query. Please try again.'
+      );
+    }
+
+    showImagesList(hits);
+
+    Notiflix.Notify.success(`Hooray! We found ${totalHits} images.`);
+
+    isEndOfPage(totalHits);
+
+    lightbox.refresh();
+  }
+
+  function onLoadMore() {
+    imagesService.fetchImages().then(handleLoadMore);
+  }
+
+  function handleLoadMore(data) {
+    if (!data) {
+      return;
+    }
+
+    const { hits, totalHits } = data;
+
+    showImagesList(hits);
+    lightbox.refresh();
+
+    if (imagesService.page < Math.ceil(totalHits / perPage)) {
+      observerLastElem.observe(markupContainer.lastElementChild);
+    }
+  }
+
+  function showImagesList(images) {
+    const markup = createMarkup(images);
+    markupContainer.insertAdjacentHTML('beforeend', markup);
+  }
+
+  function clearImagesContainer() {
+    markupContainer.innerHTML = '';
+  }
+
+  function isEndOfPage(totalHits) {
+    if (imagesService.page < Math.ceil(totalHits / perPage)) {
+      Notiflix.Notify.info(
+        "We're sorry, but you've reached the end of search results."
+      );
+    }
+  }
+
+  function handleIntersect(entries, observer) {
+    entries.forEach(entry => {
+      if (entry.isIntersecting && imagesService.query) {
+        onLoadMore();
+      }
+    });
+  }
+
+  function handleIntersectLastElem(entries, observer) {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        Notiflix.Notify.info(
+          "We're sorry, but you've reached the end of search results."
+        );
+        observer.unobserve(sentinel);
+      }
+    });
+  }
 }
 
 async function onSubmit(event) {
