@@ -1,19 +1,43 @@
 @import '~node_modules/modern-normalize/modern-normalize.css';
 
+body {
+  padding: 60px;
+}
+
 .search-form {
-  text-align: center;
-  margin-bottom: 10px;
+  display: flex;
+  justify-content: center;
+  margin: 0 auto;
+  margin-bottom: 40px;
+}
+
+.search-input {
+  font-size: 18px;
+  flex-grow: 1;
+  height: 40px;
+  padding-left: 15px;
+  border: 1px solid #303030;
+  border-radius: 8px;
 }
 
 .gallery {
   display: flex;
+  justify-content: center;
   gap: 10px;
   flex-wrap: wrap;
+
+  padding: 60px 0;
 }
 
 .photo-card {
   display: flex;
   flex-direction: column;
+
+  &:hover,
+  &:focus {
+    transform: scale(1.05);
+    box-shadow: 5px 5px 15px 5px #000000;
+  }
 }
 
 p {
@@ -23,9 +47,36 @@ p {
 
 img {
   display: block;
+  max-width: 100%;
   object-fit: cover;
+}
+
+button {
+  font-size: 14px;
+  padding: 10px 20px;
+  background-color: #2ecc71;
+  color: #ffffff;
+  border: none;
+  text-transform: uppercase;
+  cursor: pointer;
+  margin-left: 10px;
+  transition: background-color 250ms linear;
 }
 
 .load-more {
   margin: 0 auto;
+}
+
+.is-hidden {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.activation {
+  background-color: red;
+}
+
+.is-active {
+  background-color: green;
 }

@@ -3,6 +3,7 @@ import SimpleLightbox from 'simplelightbox';
 import 'simplelightbox/dist/simple-lightbox.min.css';
 import { createMarkup } from './js/createMarkup';
 import { fetchPhotos } from './js/fetchPhotos';
+import { ImagesApiService } from './js/infiniteFetch';
 
 const formInput = document.querySelector('#search-form');
 const markupContainer = document.querySelector('.gallery');
@@ -20,8 +21,16 @@ let lightbox = new SimpleLightbox('.photo-card a', {
 let currentPage = 1;
 let totalHits = 0;
 
-formInput.addEventListener('submit', onSubmit);
-loadMoreButton.addEventListener('click', onLoadMoreButton);
+formInput.lastElementChild.addEventListener('click', () => {
+  formInput.lastElementChild.classList.toggle('is-active');
+  loadMoreButton.classList.toggle('is-hidden');
+});
+
+if (loadMoreButton) {
+  formInput.addEventListener('submit', onSubmit);
+  loadMoreButton.addEventListener('click', onLoadMoreButton);
+} else {
+}
 
 async function onSubmit(event) {
   event.preventDefault();
