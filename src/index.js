@@ -34,7 +34,7 @@ async function onSubmit(event) {
   currentPage = 1;
   const feedback = await fetchPhotos(formInput, currentPage);
 
-  totalHits = feedback.hits.length;
+  const totalHits = feedback.hits.length;
 
   if (!totalHits) {
     // Якщо бекенд повертає порожній масив, значить нічого підходящого не було знайдено.
