@@ -3,12 +3,12 @@ import SimpleLightbox from 'simplelightbox';
 import 'simplelightbox/dist/simple-lightbox.min.css';
 import { createMarkup } from './js/createMarkup';
 import { fetchPhotos } from './js/fetchPhotos';
-import { ImagesApiService } from './js/infiniteFetch';
+// import { ImagesApiService } from './js/infiniteFetch';
 
 const formInput = document.querySelector('#search-form');
 const markupContainer = document.querySelector('.gallery');
 const loadMoreButton = document.querySelector('.load-more');
-const sentinel = document.querySelector('#sentinel');
+// const sentinel = document.querySelector('#sentinel');
 // В початковому стані кнопка повинна бути прихована.
 loadMoreButton.style.display = 'none';
 
@@ -18,183 +18,103 @@ let lightbox = new SimpleLightbox('.photo-card a', {
   captionDelay: 250,
 });
 
-formInput.lastElementChild.addEventListener('click', () => {
-  formInput.lastElementChild.classList.toggle('is-active');
-  loadMoreButton.classList.toggle('is-hidden');
-});
+formInput.addEventListener('submit', onSubmit);
+loadMoreButton.addEventListener('click', onLoadMoreButton);
 
-if (loadMoreButton) {
-  formInput.addEventListener('submit', onSubmit);
-  loadMoreButton.addEventListener('click', onLoadMoreButton);
+// Початкове значення параметра page повинно бути 1.
+let currentPage = 1;
 
-  // Початкове значення параметра page повинно бути 1.
-  let currentPage = 1;
+async function onSubmit(event) {
+  event.preventDefault();
 
-  async function onSubmit(event) {
-    event.preventDefault();
+  // Під час пошуку за новим ключовим словом необхідно повністю очищати вміст галереї, щоб не змішувати результати.
+  clearPage();
+  // У разі пошуку за новим ключовим словом, значення page потрібно повернути до початкового,
+  // оскільки буде пагінація по новій колекції зображень.
+  currentPage = 1;
+  const feedback = await fetchPhotos(formInput, currentPage);
 
-    // Під час пошуку за новим ключовим словом необхідно повністю очищати вміст галереї, щоб не змішувати результати.
-    clearPage();
-    // У разі пошуку за новим ключовим словом, значення page потрібно повернути до початкового,
-    // оскільки буде пагінація по новій колекції зображень.
-    currentPage = 1;
-    const feedback = await fetchPhotos(formInput, currentPage);
+  totalHits = feedback.hits.length;
 
-    totalHits = feedback.hits.length;
-
-    if (!totalHits) {
-      // Якщо бекенд повертає порожній масив, значить нічого підходящого не було знайдено.
-      // У такому разі показуй повідомлення з текстом "Sorry, there are no images matching your search query. Please try again.".
-      // Для повідомлень використовуй бібліотеку notiflix.
-      Notiflix.Notify.failure(
-        'Sorry, there are no images matching your search query. Please try again.'
-      );
-      loadMoreButton.style.display = 'none';
-      return;
-      // Після першого запиту з кожним новим пошуком отримувати повідомлення,
-      // в якому буде написано, скільки всього знайшли зображень (властивість totalHits).
-      // Текст повідомлення - "Hooray! We found totalHits images."
-    } else {
-      Notiflix.Notify.info(`Hooray! We found ${feedback.totalHits} images.`);
-    }
-
-    console.log(feedback);
-
-    const markup = createMarkup(feedback.hits);
-    markupContainer.insertAdjacentHTML('beforeend', markup);
-    // Бібліотека містить метод refresh(), який обов'язково потрібно викликати щоразу після додавання нової групи карток зображень.
-    lightbox.refresh();
-
-    // Зробити плавне прокручування сторінки після запиту і відтворення кожної наступної групи зображень.
-    const { height: cardHeight } = document
-      .querySelector('.gallery')
-      .firstElementChild.getBoundingClientRect();
-
-    window.scrollBy({
-      top: cardHeight * 2,
-      behavior: 'smooth',
-    });
-
-    checkLoadMoreButton(totalHits, feedback);
+  if (!totalHits) {
+    // Якщо бекенд повертає порожній масив, значить нічого підходящого не було знайдено.
+    // У такому разі показуй повідомлення з текстом "Sorry, there are no images matching your search query. Please try again.".
+    // Для повідомлень використовуй бібліотеку notiflix.
+    Notiflix.Notify.failure(
+      'Sorry, there are no images matching your search query. Please try again.'
+    );
+    loadMoreButton.style.display = 'none';
+    return;
+    // Після першого запиту з кожним новим пошуком отримувати повідомлення,
+    // в якому буде написано, скільки всього знайшли зображень (властивість totalHits).
+    // Текст повідомлення - "Hooray! We found totalHits images."
+  } else {
+    Notiflix.Notify.info(`Hooray! We found ${feedback.totalHits} images.`);
   }
 
-  function clearPage() {
-    markupContainer.innerHTML = '';
-  }
+  console.log(feedback);
 
-  async function onLoadMoreButton() {
-    // З кожним наступним запитом, його необхідно збільшити на 1.
-    // HTML документ вже містить розмітку кнопки, по кліку на яку,
-    // необхідно виконувати запит за наступною групою зображень і додавати розмітку до вже існуючих елементів галереї.
-    currentPage += 1;
-    const feedback = await fetchPhotos(formInput, currentPage);
-    const markup = createMarkup(feedback.hits);
-    markupContainer.insertAdjacentHTML('beforeend', markup);
-    // Бібліотека містить метод refresh(), який обов'язково потрібно викликати щоразу після додавання нової групи карток зображень.
-    lightbox.refresh();
+  const markup = createMarkup(feedback.hits);
+  markupContainer.insertAdjacentHTML('beforeend', markup);
+  // Бібліотека містить метод refresh(), який обов'язково потрібно викликати щоразу після додавання нової групи карток зображень.
+  lightbox.refresh();
 
-    totalHits += feedback.hits.length;
+  // Зробити плавне прокручування сторінки після запиту і відтворення кожної наступної групи зображень.
+  const { height: cardHeight } = document
+    .querySelector('.gallery')
+    .firstElementChild.getBoundingClientRect();
 
-    checkLoadMoreButton(totalHits, feedback);
+  window.scrollBy({
+    top: cardHeight * 2,
+    behavior: 'smooth',
+  });
 
-    // Зробити плавне прокручування сторінки після запиту і відтворення кожної наступної групи зображень.
-    const { height: cardHeight } = document
-      .querySelector('.gallery')
-      .firstElementChild.getBoundingClientRect();
+  checkLoadMoreButton(totalHits, feedback);
+}
 
-    window.scrollBy({
-      top: cardHeight * 2,
-      behavior: 'smooth',
-    });
-  }
+function clearPage() {
+  markupContainer.innerHTML = '';
+}
 
-  function checkLoadMoreButton(iterator, value) {
-    // У відповіді бекенд повертає властивість totalHits - загальна кількість зображень,
-    // які відповідають критерію пошуку (для безкоштовного акаунту).
-    // Якщо користувач дійшов до кінця колекції, ховай кнопку і виводь повідомлення з текстом
-    // "We're sorry, but you've reached the end of search results.".
-    if (`${iterator}` === `${value.totalHits}`) {
-      loadMoreButton.style.display = 'none';
-      Notiflix.Notify.info(
-        "We're sorry, but you've reached the end of search results."
-      );
-      // Після першого запиту кнопка з'являється в інтерфейсі під галереєю.
-    } else {
-      loadMoreButton.style.display = 'block';
-    }
-  }
-} else {
-  const options = {
-    root: null,
-    rootMargin: '100px',
-    threshold: 1.0,
-  };
+async function onLoadMoreButton() {
+  // З кожним наступним запитом, його необхідно збільшити на 1.
+  // HTML документ вже містить розмітку кнопки, по кліку на яку,
+  // необхідно виконувати запит за наступною групою зображень і додавати розмітку до вже існуючих елементів галереї.
+  currentPage += 1;
+  const feedback = await fetchPhotos(formInput, currentPage);
+  const markup = createMarkup(feedback.hits);
+  markupContainer.insertAdjacentHTML('beforeend', markup);
+  // Бібліотека містить метод refresh(), який обов'язково потрібно викликати щоразу після додавання нової групи карток зображень.
+  lightbox.refresh();
 
-  const callback = function (entries, observer) {
-    entries.forEach(entry => {
-      if (entry.isIntersecting) {
-        console.log(entry.target);
-        observer.unobserve(entry.target);
-        imagesApiService.incrementPage();
-        imagesApiService
-          .fetchImages()
-          .then(({ totalHits, total, hits }) => {
-            const markup = createMarkup(hits);
+  totalHits += feedback.hits.length;
 
-            markupContainer.insertAdjacentHTML('beforeend', markup);
+  checkLoadMoreButton(totalHits, feedback);
 
-            const hasMore = imagesApiService.hasMorePhotos();
-            if (hasMore) {
-              const item = document.querySelector('.photo-card:last-child');
-              observer.observe(item);
-            }
-          })
-          .catch(error => console.log(error));
-      }
-    });
-  };
+  // Зробити плавне прокручування сторінки після запиту і відтворення кожної наступної групи зображень.
+  const { height: cardHeight } = document
+    .querySelector('.gallery')
+    .firstElementChild.getBoundingClientRect();
 
-  const observer = new IntersectionObserver(callback, options);
+  window.scrollBy({
+    top: cardHeight * 2,
+    behavior: 'smooth',
+  });
+}
 
-  formInput.addEventListener('submit', onSearch);
-
-  const imagesApiService = new ImagesApiService();
-
-  function onSearch(event) {
-    event.preventDefault();
-
-    const value = event.currentTarget.elements.searchQuery.value;
-
-    if (!value) {
-      return Notiflix.Notify.failure(
-        'Sorry, there are no images matching your search query. Please try again.'
-      );
-    }
-    markupContainer.innerHTML = '';
-    imagesApiService.resetPage();
-    imagesApiService.query = value;
-
-    imagesApiService
-      .fetchImages()
-      .then(({ totalHits, total, hits }) => {
-        if (hits.length === 0) {
-          Notiflix.Notify.failure(
-            'Sorry, there are no images matching your search query. Please try again.'
-          );
-        }
-
-        const markup = createMarkup(hits);
-
-        markupContainer.insertAdjacentHTML('beforeend', markup);
-        imagesApiService.setTotalPhotos(totalHits);
-        const hasMore = imagesApiService.hasMorePhotos();
-
-        if (hasMore) {
-          const item = document.querySelector('.photo-card:last-child');
-          observer.observe(item);
-        }
-      })
-      .catch(err => console.log(err));
+function checkLoadMoreButton(iterator, value) {
+  // У відповіді бекенд повертає властивість totalHits - загальна кількість зображень,
+  // які відповідають критерію пошуку (для безкоштовного акаунту).
+  // Якщо користувач дійшов до кінця колекції, ховай кнопку і виводь повідомлення з текстом
+  // "We're sorry, but you've reached the end of search results.".
+  if (`${iterator}` === `${value.totalHits}`) {
+    loadMoreButton.style.display = 'none';
+    Notiflix.Notify.info(
+      "We're sorry, but you've reached the end of search results."
+    );
+    // Після першого запиту кнопка з'являється в інтерфейсі під галереєю.
+  } else {
+    loadMoreButton.style.display = 'block';
   }
 }
 
